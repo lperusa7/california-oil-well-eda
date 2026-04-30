@@ -1,0 +1,29 @@
+---
+title: "California Oil Well EDA"
+author: "Lukas Lescano"
+date: "2026-04-30"
+format: pdf
+---
+
+# 1. Set up
+
+## Packages
+
+```{r}
+#| label: packages
+
+
+
+```
+
+
+## Data
+
+```{r}
+#| label: data
+
+
+
+
+```
+
