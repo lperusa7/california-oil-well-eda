@@ -11,9 +11,27 @@ format: pdf
 
 ```{r}
 #| label: packages
+#| message: false
 
+# general use and cleaning
+library(tidyverse)
+library(janitor)
+library(snakecase)
 
+# file organization
+library(here)
 
+# wrap axis labels
+library(scales)
+
+# reading .xlsx files
+library(readxl)
+
+# visualize missing data
+library(naniar)
+
+# arrange plots
+library(patchwork)
 ```
 
 
@@ -22,8 +40,9 @@ format: pdf
 ```{r}
 #| label: data
 
-
-
+table1 <- read_xlsx(here("data", "CubeBrowserTableExport_2322B09F.xlsx"))
+table2 <- read_xlsx(here("data", "CubeBrowserTableExport_75677428.xlsx"))
+table3 <- read_xlsx(here("data", "CubeBrowserTableExport_41525648.xlsx"))
 
 ```
 
