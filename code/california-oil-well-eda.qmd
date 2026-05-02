@@ -89,6 +89,7 @@ inspect_table <- function(df, name) {
 
 clean_cube <- function(df) {
   df |>
+    rename("Resources (Million bbl)" = "unknown_col") |> 
     filter(!if_all(everything(), is.na)) |>   # drop fully blank separator rows
     fill(Project, Operator, `Supply Segment Group`, 
          `Life Cycle Category`, Longitude, Latitude,
@@ -110,7 +111,9 @@ table2_raw <- read_cube(here("data", "CubeBrowserTableExport_75677428.xlsx"))
 table3_raw <- read_cube(here("data", "CubeBrowserTableExport_41525648.xlsx"))
 ```
 
-# 3. Inspecting data
+# 4. Exploring Data Structure
+
+## Inspeting data
 
 ```{r}
 #| label: inspect-all
@@ -120,7 +123,7 @@ s2 <- inspect_table(table2_raw, "table2 (75677428)")
 s3 <- inspect_table(table3_raw, "table3 (41525648)")
 ```
 
-# 4. Differences and duplicates in tables
+## Differences between tables
 
 ```{r}
 #| label: checking for differences
@@ -138,6 +141,8 @@ identical(names(table1_raw), names(table3_raw))
 setdiff(names(table1_raw), names(table2_raw))
 setdiff(names(table2_raw), names(table1_raw))
 ```
+
+# Duplicates in tables
 
 ```{r}
 #| label: duplicates
