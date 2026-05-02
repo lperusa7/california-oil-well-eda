@@ -142,7 +142,7 @@ setdiff(names(table1_raw), names(table2_raw))
 setdiff(names(table2_raw), names(table1_raw))
 ```
 
-# Duplicates in tables
+## Duplicates in tables
 
 ```{r}
 #| label: duplicates
@@ -160,7 +160,59 @@ get_dupes(combined_raw)
 get_dupes(table1_raw)
 ```
 
-# 5. Cleaning data
+## Exploring combined data structure
+
+```{r}
+#| label: exploring combined data structure 
+#| 
+# Check every column: unique values for categoricals, range for numerics
+combined_raw |> count(source_file)
+combined_raw |> count(supply_segment_group)
+combined_raw |> count(life_cycle_category)
+combined_raw |> count(opec_plus)
+combined_raw |> count(gas_market)
+combined_raw |> count(reservoir_depth_detail)
+combined_raw |> count(country)
+combined_raw |> count(us_state)
+combined_raw |> count(basin)
+combined_raw |> count(year)
+
+# For the bucketed text columns
+combined_raw |> count(internal_rate_of_return) |> arrange(desc(n)) |> print(n = Inf)
+combined_raw |> count(payback_years) |> arrange(desc(n)) |> print(n = Inf)
+
+# For numeric columns, check range and whether any non-numeric strings snuck in
+combined |>
+  summarise(across(c(longitude, latitude, eur_per_well, capex_per_eur,
+                     capex_per_well, hyperbolic_factor_b_per_well,
+                     breakeven_oil_price, breakeven_gas_price20,
+                     breakeven_gas_price15, x24h_initial_production_per_well,
+                     resources_million_bbl),
+                   ~ sum(is.na(suppressWarnings(as.numeric(.x)))),
+                   .names = "non_numeric_{.col}"))
+```
+
+
+## Unique values for combined
+
+```{r}
+#| label: unique values for each column
+
+map(combined |> select(internal_rate_of_return, payback_years, 
+                              resources_million_bbl, project, operator,
+                              supply_segment_group, life_cycle_category,
+                              basin, us_state, gas_market, 
+                              reservoir_depth_detail, opec_plus,
+                              well_breakeven_oil_price_detail,
+                              breakeven_oil_price_detail,
+                              breakeven_gas_price15_detail),
+    ~ sort(unique(.x)))
+```
+
+
+# 5. Wrangling and Cleaning data
+
+## Clean cube 
 
 ```{r}
 #| label: clean cube
@@ -169,4 +221,56 @@ table1_clean <- clean_cube(table1_raw)
 table2_clean <- clean_cube(table2_raw)
 table3_clean <- clean_cube(table3_raw)
 ```
+
+## Combined data cleaning
+
+```{r}
+#| label: creating combined clean data frame
+
+combined_clean <- combined |>
+  mutate(
+    # Numeric conversions
+    across(c(longitude, latitude, eur_per_well, capex_per_eur,
+             capex_per_well, hyperbolic_factor_b_per_well,
+             breakeven_oil_price, breakeven_gas_price20,
+             breakeven_gas_price15, x24h_initial_production_per_well),
+           as.numeric),
+    year = as.integer(year),
+    
+    # Factor conversions
+    supply_segment_group   = factor(supply_segment_group),
+    life_cycle_category    = factor(life_cycle_category),
+    basin                  = factor(basin),
+    us_state               = factor(us_state),
+    gas_market             = factor(gas_market),
+    source_file            = factor(source_file),
+    reservoir_depth_detail = factor(reservoir_depth_detail,
+      levels = c("0-1000 m depth", "1000-2000 m depth", "2000-3000 m depth",
+                 "3000-4000 m depth", "4000-5000 m depth", "5000-6000 m depth"),
+      ordered = TRUE)
+  )
+```
+
+
+***NEED TO ADDRESS IRR, and payback years, and resources_million_bbl***
+
+# 6. IRR Profitability Figure
+
+Grouping/categorical context:
+- *basin*: geographic grouping
+- *operator*: who is operating well
+- *project*: which project is it
+- *life_cycle_category*: producing vs discovery
+- *supply_segment_group*: Shale vs. Onshore vs. Offshore
+- *us_state*: which state
+
+Economic context that pairs with IRR:
+**breakeven_oil_price**: directly related to profitability
+**capex_per_well**: cost side of the equation
+**payback_years**: complementary profitability indicator
+**resources_million_bbl**: size of the opportunity
+
+Possible use:
+- *reservoir_depth_detail*: cost driver that influences IRR
+- *eur_per_well*: production side
 
