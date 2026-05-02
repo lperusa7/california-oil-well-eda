@@ -34,15 +34,134 @@ library(naniar)
 library(patchwork)
 ```
 
-
-## Data
+# 2. Functions
 
 ```{r}
-#| label: data
+#| label: reading in data function
 
-table1 <- read_xlsx(here("data", "CubeBrowserTableExport_2322B09F.xlsx"))
-table2 <- read_xlsx(here("data", "CubeBrowserTableExport_75677428.xlsx"))
-table3 <- read_xlsx(here("data", "CubeBrowserTableExport_41525648.xlsx"))
+# Header is on row 2 in these CubeBrowser exports; row 1 is blank.
+# Read everything as character first to avoid silent type coercion
+read_cube <- function(path) {
+  read_xlsx(path, skip = 1, col_types = "text",
+            .name_repair = ~ ifelse(.x == "", "unknown_col", .x)) |>
+    select(where(~ !all(is.na(.x))))
+}
 
+```
+
+```{r}
+#| label: inspect-fn
+
+inspect_table <- function(df, name) {
+  cat("==========================================\n")
+  cat("TABLE:", name, "\n")
+  cat("==========================================\n")
+  cat("Dimensions:", nrow(df), "rows x", ncol(df), "cols\n\n")
+  
+  cat("--- Column names (raw) ---\n")
+  print(names(df))
+  
+  cat("\n--- Per-column summary ---\n")
+  summary_df <- tibble(
+    column      = names(df),
+    n_missing   = map_int(df, ~ sum(is.na(.x) | .x == "")),
+    pct_missing = round(100 * n_missing / nrow(df), 1),
+    n_unique    = map_int(df, ~ dplyr::n_distinct(.x, na.rm = TRUE)),
+    example_vals = map_chr(df, ~ {
+      vals <- unique(na.omit(.x))
+      vals <- vals[vals != ""]
+      paste(head(vals, 3), collapse = " | ")
+    })
+  )
+  print(summary_df, n = Inf)
+  
+  cat("\n--- First 5 rows ---\n")
+  print(head(df, 5))
+  
+  cat("\n--- Duplicate full rows:", sum(duplicated(df)), "---\n")
+  
+  invisible(summary_df)
+}
+```
+
+```{r}
+#| label: clean cube function
+
+clean_cube <- function(df) {
+  df |>
+    filter(!if_all(everything(), is.na)) |>   # drop fully blank separator rows
+    fill(Project, Operator, `Supply Segment Group`, 
+         `Life Cycle Category`, Longitude, Latitude,
+         Country, `US State`, Year, Basin, .direction = "down") |>  # fill ALL group key columns
+    clean_names()
+}
+```
+
+# 3. Data
+
+## Read in data
+
+```{r}
+#| label: data-raw
+#| message: false
+
+table1_raw <- read_cube(here("data", "CubeBrowserTableExport_2322B09F.xlsx"))
+table2_raw <- read_cube(here("data", "CubeBrowserTableExport_75677428.xlsx"))
+table3_raw <- read_cube(here("data", "CubeBrowserTableExport_41525648.xlsx"))
+```
+
+# 3. Inspecting data
+
+```{r}
+#| label: inspect-all
+
+s1 <- inspect_table(table1_raw, "table1 (2322B09F)")
+s2 <- inspect_table(table2_raw, "table2 (75677428)")
+s3 <- inspect_table(table3_raw, "table3 (41525648)")
+```
+
+# 4. Differences and duplicates in tables
+
+```{r}
+#| label: checking for differences
+
+# Compare column names across all three
+names(table1_raw)
+names(table2_raw)
+names(table3_raw)
+
+# Are they exactly the same?
+identical(names(table1_raw), names(table2_raw))
+identical(names(table1_raw), names(table3_raw))
+
+# If not identical, find the differences
+setdiff(names(table1_raw), names(table2_raw))
+setdiff(names(table2_raw), names(table1_raw))
+```
+
+```{r}
+#| label: duplicates
+
+combined_raw <- bind_rows(
+  table1_raw |> mutate(source_file = "2322B09F"),
+  table2_raw |> mutate(source_file = "75677428"),
+  table3_raw |> mutate(source_file = "41525648")
+)
+
+# How many full duplicate rows exist across files?
+get_dupes(combined_raw)
+
+# How many duplicates in table 1?
+get_dupes(table1_raw)
+```
+
+# 5. Cleaning data
+
+```{r}
+#| label: clean cube
+
+table1_clean <- clean_cube(table1_raw)
+table2_clean <- clean_cube(table2_raw)
+table3_clean <- clean_cube(table3_raw)
 ```
 
